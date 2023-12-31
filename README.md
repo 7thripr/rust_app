@@ -2,9 +2,9 @@
 
 Tech Stack i am using:<br>
 
-Rust<br>
-Axum<br>
-SeaORM(sqlite)<br>
+Rust 1.75<br>
+Axum 0.7<br>
+SeaORM(sqlite) 0.12<br>
 minijinja/yew(still deciding) for templating<br>
 
 
