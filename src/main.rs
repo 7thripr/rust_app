@@ -18,7 +18,7 @@ use entity::user::{ActiveModel,
 use uuid::Uuid;
 
 mod models;
-use models::user_models::{CreateUserModel, User, LoginUserModel, UpdateUsername};
+use models::user_models::{CreateUserModel, User, LoginUserModel, UpdateUsername, GetUser};
 
 #[tokio::main]
 async fn main() {
@@ -37,6 +37,7 @@ async fn server() {
     .route("/api/login", get(login_user),)
     .route("/api/user/:uuid/update", put(update_username),)
     .route("/api/user/:uuid/delete", delete(delete_user),)
+    .route("/api/users", get(all_users),)
     .layer(middleware::from_fn(logging_middleware));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
@@ -131,4 +132,18 @@ async fn delete_user(
     db.close().await.unwrap();
 
     (StatusCode::ACCEPTED, "Deleted User")
+}
+
+async fn all_users() -> impl IntoResponse {
+    let db: DatabaseConnection = Database::connect("sqlite:///Users/rishabhprakash/Rust/axum_learn/proejctDB.db").await.unwrap();
+    
+    let users: Vec<GetUser> = Entity::find().all(&db).await.unwrap().into_iter().map(|item|GetUser{
+            username: item.name,
+            email: item.email,
+        }
+    ).collect();
+
+    db.close().await.unwrap();
+
+    (StatusCode::ACCEPTED, Json(users))
 }

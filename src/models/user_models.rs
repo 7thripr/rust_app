@@ -9,6 +9,12 @@ pub struct User {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct GetUser {
+    pub username: String,
+    pub email: String,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct CreateUserModel {
     pub username: String,
     pub password: String,
