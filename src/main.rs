@@ -1,26 +1,29 @@
 #![allow(unused_imports)]
 
 use axum::{
-    routing::{get, post},
+    routing::{get, post, put},
     http::{StatusCode, Request},
     Json, Router,
     response::IntoResponse,
     middleware::{self, Next}, 
-    body::Body,
+    body::Body, extract::Path,
 };
 
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tracing_subscriber::{layer::{SubscriberExt, self}, util::SubscriberInitExt, fmt::layer};
 use sea_orm::{
     Database,
     DatabaseConnection,
-    Set, ActiveModelTrait,
+    Set, ActiveModelTrait, Condition, ColumnTrait, EntityTrait, QueryFilter,
 };
-use entity::user::{Entity, ActiveModel, self};
+use entity::user::{ActiveModel,
+    Entity, 
+    self};
 use uuid::Uuid;
 
 mod models;
-use models::user_models::{CreateUserModel, User};
+use models::user_models::{CreateUserModel, User, LoginUserModel, UpdateUsername};
 
 #[tokio::main]
 async fn main() {
@@ -34,8 +37,10 @@ async fn server() {
     .init();
 
     let app = Router::new()
-    .route("/api/test", get(test),)
+    .route("/api/status", get(status),)
     .route("/api/create_user", post(create_user_post),)
+    .route("/api/login", get(login_user),)
+    .route("/api/user/:uuid/update", put(update_username),)
     .layer(middleware::from_fn(logging_middleware));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
@@ -49,10 +54,9 @@ async fn logging_middleware(req: Request<Body>, next: Next) -> impl IntoResponse
     next.run(req).await
 }
 
-async fn test() -> impl IntoResponse {
-    println!("First Api");
-
-    (StatusCode::ACCEPTED, "Api Working")
+async fn status() -> impl IntoResponse {
+    let status = "online";
+    (StatusCode::ACCEPTED, status)
 }
 
 async fn create_user_post(
@@ -70,6 +74,53 @@ async fn create_user_post(
     };
     println!("User Data: {:?}", user_model);
     user_model.insert(&db).await.unwrap();
-    db.close().await;
+    db.close().await.unwrap();
     (StatusCode::ACCEPTED, "Data Inserted")
+}
+
+async fn login_user(
+    Json(user_data): Json<LoginUserModel>,
+) -> impl IntoResponse {
+    let db: DatabaseConnection = Database::connect("sqlite:///Users/rishabhprakash/Rust/axum_learn/proejctDB.db")
+    .await.unwrap();
+    
+    let user = Entity::find()
+    .filter(
+        Condition::all() 
+        .add(entity::user::Column::Email.eq(user_data.email))
+        .add(entity::user::Column::Password.eq(user_data.password))
+    ).one(&db)
+    .await.unwrap().unwrap();
+
+    let data = User{
+        username: user.name,
+        email: user.email,
+        uuid: user.uuid,
+        password: user.password,
+    };
+
+    db.close().await.unwrap();
+    (StatusCode::ACCEPTED, Json(data))
+    
+}
+
+async fn update_username(
+    Path(uuid): Path<String>,
+    Json(user_data): Json<UpdateUsername>,
+) -> impl IntoResponse {
+    let db: DatabaseConnection = Database::connect("sqlite:///Users/rishabhprakash/Rust/axum_learn/proejctDB.db")
+    .await.unwrap();
+    
+    let mut user: ActiveModel = Entity::find()
+    .filter(
+        Condition::all() 
+        .add(entity::user::Column::Email.eq(uuid))
+    ).one(&db)
+    .await.unwrap().unwrap()
+    .into(); // Convert Entity to ActiveModel
+    user.name = Set(user_data.username.to_owned());
+    user.update(&db).await.unwrap();
+
+    db.close().await.unwrap();
+    (StatusCode::ACCEPTED, "Data Updated")
 }

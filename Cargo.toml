@@ -20,3 +20,4 @@ sea-orm = { version = "0.12", features = [ "sqlx-sqlite", "runtime-async-std-rus
 uuid = { version = "1.6.1", features = ["v4"] }
 entity = { path = "entity" }
 migration = {path = "migration"}
+minijinja = { version = "1.0.10", features = ["json"] }
