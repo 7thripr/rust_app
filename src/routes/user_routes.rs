@@ -1,4 +1,4 @@
-use axum::{Router, http, routing::{post, get}};
+use axum::{Router, http, routing::{get, put}};
 use tower_http::cors::{CorsLayer, Any};
 use http::Method;
 
@@ -10,7 +10,7 @@ pub fn user_routes() -> Router {
         .allow_origin(Any);
     
     let router = Router::new()
-    .route("/api/user/:uuid/update", post(update_username),)
+    .route("/api/user/:uuid/update", put(update_username),)
     .route("/api/user/:uuid/delete", get(delete_user),)
     .route("/api/users", get(all_users),)
     .layer(cors);
