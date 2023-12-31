@@ -1,7 +1,5 @@
-#![allow(unused_imports)]
-
 use axum::{
-    routing::{get, post, put},
+    routing::{get, post, put, delete},
     http::{StatusCode, Request},
     Json, Router,
     response::IntoResponse,
@@ -9,17 +7,14 @@ use axum::{
     body::Body, extract::Path,
 };
 
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use tracing_subscriber::{layer::{SubscriberExt, self}, util::SubscriberInitExt, fmt::layer};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use sea_orm::{
     Database,
     DatabaseConnection,
     Set, ActiveModelTrait, Condition, ColumnTrait, EntityTrait, QueryFilter,
 };
 use entity::user::{ActiveModel,
-    Entity, 
-    self};
+    Entity, Column};
 use uuid::Uuid;
 
 mod models;
@@ -41,6 +36,7 @@ async fn server() {
     .route("/api/create_user", post(create_user_post),)
     .route("/api/login", get(login_user),)
     .route("/api/user/:uuid/update", put(update_username),)
+    .route("/api/user/:uuid/delete", delete(delete_user),)
     .layer(middleware::from_fn(logging_middleware));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
@@ -72,7 +68,6 @@ async fn create_user_post(
         uuid: Set(Uuid::new_v4().to_string()),
         ..Default::default()
     };
-    println!("User Data: {:?}", user_model);
     user_model.insert(&db).await.unwrap();
     db.close().await.unwrap();
     (StatusCode::ACCEPTED, "Data Inserted")
@@ -114,13 +109,26 @@ async fn update_username(
     let mut user: ActiveModel = Entity::find()
     .filter(
         Condition::all() 
-        .add(entity::user::Column::Email.eq(uuid))
+        .add(Column::Uuid.eq(uuid))
     ).one(&db)
-    .await.unwrap().unwrap()
-    .into(); // Convert Entity to ActiveModel
+    .await.unwrap().unwrap().into(); // Convert Entity to ActiveModel
     user.name = Set(user_data.username.to_owned());
     user.update(&db).await.unwrap();
 
     db.close().await.unwrap();
     (StatusCode::ACCEPTED, "Data Updated")
+}
+
+async fn delete_user(
+    Path(uuid): Path<String>,) -> impl IntoResponse {
+    let db: DatabaseConnection = Database::connect("sqlite:///Users/rishabhprakash/Rust/axum_learn/proejctDB.db").await.unwrap();
+    
+    let user = Entity::find()
+    .filter(Column::Uuid.eq(uuid)).one(&db).await.unwrap().unwrap();
+
+    Entity::delete_by_id(user.id).exec(&db).await.unwrap();
+
+    db.close().await.unwrap();
+
+    (StatusCode::ACCEPTED, "Deleted User")
 }
