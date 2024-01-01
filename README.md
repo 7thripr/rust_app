@@ -5,6 +5,6 @@ Tech Stack i am using:<br>
 Rust 1.75<br>
 Axum 0.7<br>
 SeaORM(sqlite) 0.12<br>
-minijinja/yew(still deciding) for templating<br>
+<s>minijinja/yew(still deciding) for templating</s>ended up using askama<br>
 
 
