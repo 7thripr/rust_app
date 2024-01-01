@@ -1,3 +1,4 @@
+#![allow(non_snake_case, unused)]
 mod models;
 mod routes;
 mod handler;
@@ -6,7 +7,7 @@ mod utils;
 use axum::{
     routing::get,
     http::{StatusCode, Request}, Router,
-    response::IntoResponse,
+    response::{IntoResponse, Response, Html},
     middleware::{self, Next}, 
     body::Body, Extension,
 };
@@ -15,6 +16,12 @@ use sea_orm::Database;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utils::consts::DATABASE_URL;
 
+use models::webpage_models::FormTemplate;
+
+use serde_json::json;
+use askama::Template;
+
+use crate::models::user_models::UpdateUsername;
 
 #[tokio::main]
 async fn main() {
@@ -33,6 +40,7 @@ async fn server() {
         .init();
 
     let app = Router::new()
+        .route("/", get(index),)
         .route("/api/status", get(status),)
         .merge(auth_routes())
         .merge(user_routes())
@@ -41,7 +49,8 @@ async fn server() {
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
     axum::serve(listener, app)
-    .await.unwrap();
+    .await
+    .map_err(|error| eprintln!("Server error: {}", error));
 
 }
 
@@ -50,8 +59,24 @@ async fn logging_middleware(req: Request<Body>, next: Next) -> impl IntoResponse
     next.run(req).await
 }
 
+fn render_template(template: impl Template) -> Response {
+    match template.render() {
+        Ok(rendered) => Html(rendered).into_response(),
+        Err(e) => {
+            eprintln!("Failed to render template: {e:?}");
+
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
 async fn status() -> impl IntoResponse {
     let status = "online";
     (StatusCode::ACCEPTED, status)
 }
 
+async fn index() -> Response {
+    // Default with empty strings.
+    let template = FormTemplate::default();
+    render_template(template)
+}
