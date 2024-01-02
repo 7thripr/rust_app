@@ -54,6 +54,7 @@ async fn server() {
 
 }
 
+// Ignore just logging comming api requests
 async fn logging_middleware(req: Request<Body>, next: Next) -> impl IntoResponse {
     println!("Received a request to {}", req.uri());
     next.run(req).await
