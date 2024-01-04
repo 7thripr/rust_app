@@ -7,4 +7,5 @@ Axum 0.7<br>
 SeaORM(sqlite) 0.12<br>
 <s>minijinja/yew(still deciding) for templating</s> ended up using askama<br>
 
-
+bun
+vujs
